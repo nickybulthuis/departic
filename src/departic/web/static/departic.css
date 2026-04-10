@@ -1,0 +1,607 @@
+/* Departic — minimal overrides on top of Bulma */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── Design tokens ───────────────────────────────────────────────────── */
+
+:root {
+  --dp-bg:              #f9fafb;
+  --dp-card-bg:         #ffffff;
+  --dp-border:          #e5e7eb;
+  --dp-border-plan:     #93c5fd;
+  --dp-bg-plan:         #eff6ff;
+  --dp-divider-plan:    #bfdbfe;
+  --dp-text:            #1f2937;
+  --dp-text-muted:      #9ca3af;
+  --dp-text-muted-dark: #6b7280;
+  --dp-accent-blue:     #2563eb;
+  --dp-accent-amber:    #d97706;
+  --dp-divider:         #e5e7eb;
+  --dp-calc-bg:         #f9fafb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dp-bg:              #111827;
+    --dp-card-bg:         #1f2937;
+    --dp-border:          #374151;
+    --dp-border-plan:     #3b82f6;
+    --dp-bg-plan:         #1e3a5f;
+    --dp-divider-plan:    #1e40af;
+    --dp-text:            #f9fafb;
+    --dp-text-muted:      #9ca3af;
+    --dp-text-muted-dark: #9ca3af;
+    --dp-accent-blue:     #60a5fa;
+    --dp-accent-amber:    #fbbf24;
+    --dp-divider:         #374151;
+    --dp-calc-bg:         #111827;
+  }
+
+  /* Bulma overrides for dark mode */
+  .title, .subtitle { color: var(--dp-text) !important; }
+  .progress { background: var(--dp-border); }
+
+  .footer, .departic-footer {
+    --bulma-footer-background-color: transparent;
+    background-color: transparent !important;
+  }
+
+  /* Trip cards: lighten muted text against the dark card background */
+  .trip-card .has-text-grey { color: #d1d5db !important; }
+
+  /* Plan card: force light text against the dark-blue background */
+  .plan-card .trip-name,
+  .plan-card .is-size-7,
+  .plan-card .has-text-grey,
+  .plan-card .plan-eyebrow { color: #e5e7eb !important; }
+  .plan-card .plan-eyebrow { color: var(--dp-accent-blue) !important; }
+}
+
+/* ── Base ────────────────────────────────────────────────────────────── */
+
+html, body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--dp-bg);
+  color: var(--dp-text);
+}
+
+
+
+/* ── Logo ────────────────────────────────────────────────────────────── */
+
+.departic-logo { height: 96px; border-radius: 8px; background: #f9fafb; padding: 4px; }
+
+/* ── Plan card ───────────────────────────────────────────────────────── */
+
+.plan-card.card {
+  border: 1.5px solid var(--dp-border-plan);
+  border-left: 4px solid var(--dp-accent-blue);
+  box-shadow: 0 4px 16px rgba(37,99,235,.12), 0 1px 3px rgba(37,99,235,.08);
+  background: var(--dp-bg-plan);
+}
+
+.plan-card .trip-divider {
+  background: var(--dp-divider-plan);
+}
+
+.plan-card .trip-hdivider {
+  background: var(--dp-divider-plan);
+}
+
+.plan-eyebrow { letter-spacing: 1.2px; color: var(--dp-accent-blue); }
+
+.plan-card .plan-calc {
+  background: var(--dp-card-bg);
+  border-color: var(--dp-divider-plan);
+}
+
+.plan-card .trip-info-panel {
+  border-color: var(--dp-divider-plan);
+}
+
+.plan-card .trip-info-section + .trip-info-section {
+  border-top-color: var(--dp-divider-plan);
+}
+
+/* ── Calculation block ───────────────────────────────────────────────── */
+
+.plan-calc {
+  font-family: 'DM Mono', monospace;
+  font-size: .6rem;
+  background: var(--dp-calc-bg);
+  border: 1px solid var(--dp-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  line-height: 1.6;
+  color: var(--dp-text);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Ensure <strong> results inside the calc block inherit the correct text
+   colour and are not overridden to a dark shade by Bulma in dark mode. */
+.plan-calc strong {
+  color: inherit;
+}
+
+.plan-calc-b2b {
+  border-left: 3px solid var(--dp-accent-amber);
+}
+
+/* collapsible wrapper — hidden by default */
+.calc-collapse {
+  display: none;
+}
+.calc-collapse.is-open {
+  display: block;
+}
+
+/* ── Info button ─────────────────────────────────────────────────────── */
+
+.trip-info-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--dp-text-muted);
+  font-size: .85rem;
+  flex-shrink: 0;
+  transition: color .15s, transform .15s;
+}
+.trip-info-toggle:hover {
+  color: var(--dp-accent-blue);
+}
+.trip-info-toggle.is-open {
+  color: var(--dp-accent-blue);
+}
+
+/* ── Info panel ──────────────────────────────────────────────────────── */
+
+.trip-info-panel {
+  border: 1px solid var(--dp-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.trip-info-section {
+  padding: 5px 8px;
+}
+.trip-info-section + .trip-info-section {
+  border-top: 1px solid var(--dp-border);
+}
+.trip-info-section .plan-calc {
+  border: none;
+  border-radius: 0;
+  padding: 2px 0 0 0;
+  background: transparent;
+}
+
+.trip-info-label {
+  font-size: .6rem;
+  font-weight: 600;
+  color: var(--dp-text-muted-dark);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 1px;
+}
+
+
+
+/* ── EVCC status widget ───────────────────────────────────────────────── */
+
+.evcc-widget {
+  background: var(--dp-card-bg);
+  border: 1px solid var(--dp-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Header strip: title left, plan chip right */
+.evcc-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 7px;
+  border-bottom: 1px solid var(--dp-divider);
+}
+
+.evcc-widget-title {
+  font-size: .6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--dp-text-muted-dark);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.evcc-plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--dp-bg-plan);
+  border: 1px solid var(--dp-border-plan);
+  border-radius: 20px;
+  padding: 2px 10px 2px 7px;
+  font-size: .7rem;
+  font-weight: 600;
+  color: var(--dp-accent-blue);
+  white-space: nowrap;
+}
+
+.evcc-plan-chip-none {
+  background: transparent;
+  border-color: var(--dp-border);
+  color: var(--dp-text-muted);
+  font-weight: 400;
+}
+
+.evcc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Energy flow pipeline ────────────────────────────────────────────── */
+
+.ef-pipeline {
+  display: flex;
+  align-items: center;
+  padding: 16px 14px 12px;
+  gap: 0;
+}
+
+/* Boxes */
+.ef-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--dp-bg);
+  border: 1.5px solid var(--dp-border);
+  border-radius: 10px;
+  padding: 10px 8px;
+  transition: border-color .3s, background .3s;
+  min-width: 0;
+}
+
+/* Sources box is slightly wider to fit two rows */
+.ef-box-sources {
+  flex: 0 0 96px;
+  gap: 0;
+}
+
+.ef-box-charger {
+  flex: 0 0 80px;
+  align-self: center;
+}
+.ef-box-charger.is-active  { border-color: var(--dp-accent-blue); background: var(--dp-bg-plan); }
+.ef-box-charger.is-charging {
+  border-color: var(--dp-accent-blue);
+  background: var(--dp-bg-plan);
+  animation: ef-pulse 1.6s ease-in-out infinite;
+}
+
+.ef-box-car {
+  flex: 1;
+  min-width: 80px;
+  align-self: center;
+}
+.ef-box-car.is-connected { border-color: #22c55e; }
+.ef-box-car.is-charging  { border-color: #2563eb; background: var(--dp-bg-plan); }
+
+/* Source rows inside the left box */
+.ef-source {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0;
+  width: 100%;
+  transition: color .3s;
+}
+
+.ef-source-divider {
+  width: 70%;
+  height: 1px;
+  background: var(--dp-divider);
+  margin: 2px 0;
+}
+
+.ef-source-icon {
+  font-size: 1.1rem;
+  color: var(--dp-text-muted);
+  margin-bottom: 2px;
+  transition: color .3s;
+}
+
+.ef-source-value {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--dp-text);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.ef-source-label {
+  font-size: .55rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--dp-text-muted);
+  margin-top: 1px;
+}
+
+/* Source colour states */
+.ef-source.is-active-solar .ef-source-icon  { color: #f59e0b; }
+.ef-source.is-active-grid .ef-source-icon   { color: #ef4444; }
+.ef-source.is-active-export .ef-source-icon { color: #22c55e; }
+
+.ef-col-export { color: #16a34a; }
+.ef-col-muted  { color: var(--dp-text-muted); font-weight: 400; }
+
+/* Charger centre icon */
+.ef-charger-icon-big {
+  font-size: 1.4rem;
+  color: var(--dp-text-muted);
+  margin-bottom: 4px;
+  transition: color .3s;
+}
+.ef-box-charger.is-active .ef-charger-icon-big,
+.ef-box-charger.is-charging .ef-charger-icon-big { color: var(--dp-accent-blue); }
+
+.ef-charger-mode { margin-bottom: 2px; }
+
+/* Car icon */
+.ef-car-icon {
+  font-size: 1.4rem;
+  color: var(--dp-text-muted);
+  margin-bottom: 4px;
+  transition: color .3s;
+}
+/* No plan set → green when connected (original behaviour) */
+.ef-box-car.is-connected .ef-car-icon            { color: #22c55e; }
+/* SoC below target → red border + icon */
+.ef-box-car.is-soc-low                           { border-color: #ef4444; }
+.ef-box-car.is-soc-low .ef-car-icon              { color: #ef4444; }
+/* SoC at or above target → green border + icon */
+.ef-box-car.is-soc-ok                            { border-color: #22c55e; }
+.ef-box-car.is-soc-ok .ef-car-icon               { color: #22c55e; }
+/* Charging overrides icon colour to pulsing blue */
+.ef-box-car.is-charging .ef-car-icon {
+  color: #2563eb;
+  animation: ef-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ef-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .4; }
+}
+
+/* Connectors between boxes */
+.ef-connector {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 24px;
+  max-width: 48px;
+  /* Horizontal padding keeps the line (and dot travel) away from the box borders */
+  padding: 0 6px;
+}
+
+.ef-connector-line {
+  width: 100%;
+  height: 2px;
+  background: var(--dp-border);
+  border-radius: 1px;
+  position: relative;
+}
+
+/* Animated dot travels left→right, stops at the box edge (overflow:hidden clips it) */
+.ef-connector-dot-in,
+.ef-connector-dot-out {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: ef-flow 1.4s linear infinite;
+}
+
+.ef-connector-dot-in  { background: var(--dp-accent-blue); }
+.ef-connector-dot-out { background: #2563eb; }
+
+@keyframes ef-flow {
+  0%   { left: 0;               opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { left: calc(100% - 8px); opacity: 0; }
+}
+
+/* Idle connector (charger→car when not charging) */
+.ef-connector-idle .ef-connector-line {
+  background: var(--dp-border);
+  opacity: .4;
+}
+
+/* Footer stats bar */
+.ef-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--dp-divider);
+  flex-wrap: wrap;
+}
+
+.ef-footer-stat {
+  font-size: .68rem;
+  color: var(--dp-text-muted-dark);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ef-footer-stat i      { font-size: .6rem; opacity: .7; }
+.ef-footer-stat strong { color: var(--dp-text); font-weight: 600; }
+.ef-footer-sep         { color: var(--dp-text-muted); opacity: .4; }
+
+@media (prefers-color-scheme: dark) {
+  .ef-col-export { color: #4ade80; }
+  .ef-box-car.is-connected { border-color: #16a34a; }
+}
+
+/* Footer stats bar */
+.ef-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0 12px;
+  border-top: 1px solid var(--dp-divider);
+  flex-wrap: wrap;
+}
+
+.ef-footer-stat {
+  font-size: .68rem;
+  color: var(--dp-text-muted-dark);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ef-footer-stat i      { font-size: .6rem; opacity: .7; }
+.ef-footer-stat strong { color: var(--dp-text); font-weight: 600; }
+.ef-footer-sep         { color: var(--dp-text-muted); opacity: .4; font-size: .7rem; }
+
+@media (prefers-color-scheme: dark) {
+  .ef-node-solar.is-active .ef-node-value { color: #fbbf24; }
+  .ef-node-grid.is-import .ef-node-value  { color: #f87171; }
+  .ef-node-grid.is-export .ef-node-value  { color: #4ade80; }
+  .ef-export                              { color: #4ade80; }
+  .ef-charger-circle.is-active            { fill: #1e3a5f; }
+  .ef-charger-circle.is-charging          { fill: #1e3a5f; stroke: #60a5fa; }
+}
+
+/* mode badge */
+.evcc-mode-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .3px;
+  background: var(--dp-border);
+  color: var(--dp-text-muted-dark);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.evcc-mode-badge.mode-pv     { background: #d1fae5; color: #065f46; }
+.evcc-mode-badge.mode-minpv  { background: #fef9c3; color: #713f12; }
+.evcc-mode-badge.mode-now    { background: #dbeafe; color: #1e40af; }
+.evcc-mode-badge.mode-off    { background: var(--dp-border); color: var(--dp-text-muted); }
+
+@media (prefers-color-scheme: dark) {
+  .evcc-mode-badge.mode-pv    { background: #064e3b; color: #6ee7b7; }
+  .evcc-mode-badge.mode-minpv { background: #3f3200; color: #fde68a; }
+  .evcc-mode-badge.mode-now   { background: #1e3a5f; color: #93c5fd; }
+}
+
+/* ── Trip list ───────────────────────────────────────────────────────── */
+
+.trip-list { display: flex; flex-direction: column; gap: 8px; }
+
+.trip-card.card {
+  border-left: 3px solid var(--dp-border);
+  background: var(--dp-card-bg);
+  color: var(--dp-text);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.trip-divider {
+  width: 1px;
+  background: var(--dp-divider);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.trip-hdivider { height: 1px; background: var(--dp-divider); margin: 8px 0; }
+.trip-feed { margin-left: auto; }
+.trip-countdown.is-soon { color: var(--dp-accent-amber); font-weight: 700; animation: pulse-soon 2s ease-in-out infinite; }
+.trip-countdown.is-departed { text-decoration: line-through; opacity: .5; }
+
+@keyframes pulse-soon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+
+.departic-footer { font-size: .7rem; color: var(--dp-text-muted); background: transparent; }
+.departic-footer a { color: var(--dp-text-muted); text-decoration: underline; }
+.departic-footer a:hover { color: var(--dp-text-muted-dark); }
+
+.departic-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.departic-footer-sep { opacity: .4; }
+
+.departic-footer-attr {
+  margin-top: 4px;
+  font-size: .6rem;
+  opacity: .55;
+}
+
+.departic-footer-form {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--dp-border);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 18px;
+  margin: 0;
+}
+
+.departic-footer-select {
+  font-size: .6rem;
+  color: var(--dp-text-muted);
+  background: transparent;
+  border: none;
+  padding: 0 2px 0 4px;
+  height: 100%;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.departic-footer-btn {
+  font-size: .6rem;
+  color: var(--dp-text-muted);
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--dp-border);
+  padding: 0 5px;
+  height: 100%;
+  cursor: pointer;
+  line-height: 1;
+}
+.departic-footer-btn:hover { background: var(--dp-border); }

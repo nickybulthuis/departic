@@ -1,0 +1,88 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  Departic — configuration file                                          ║
+# ║  Copy this file to /data/departic.yaml and edit it to your needs.       ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# ── EVCC ──────────────────────────────────────────────────────────────────
+evcc:
+  # Base URL of your EVCC instance (no trailing slash).
+  url: "https://evcc.local:7070"
+
+  # Title of your vehicle as shown in the EVCC interface (e.g. "MyCar").
+  # Departic uses this to look up the vehicle's capacity, SoC and range
+  # from the EVCC state.
+  vehicle_title: "MyCar"
+
+  # Your home address — used as the origin for automatic route calculation.
+  # When a bare #trip event has a calendar location but no explicit target
+  # (no %, no km), Departic calculates the driving distance using
+  # OpenStreetMap (Nominatim + OSRM) and converts it to a SoC target.
+  # Leave empty to disable location-based routing.
+  home_address: "Smallville, Midwest, Freedonia"
+
+
+
+# ── Vehicle ───────────────────────────────────────────────────────────────
+vehicle:
+  # Average energy consumption in kWh per 100 km.
+  # Used to convert a km-based trip target to a SoC percentage.
+  # Reference values:
+  #   Summer, highway  ≈ 18 kWh/100km
+  #   Average          ≈ 20 kWh/100km
+  #   Winter, cold     ≈ 24 kWh/100km
+  consumption_kwh_per_100km: 20.0
+
+  # Time window (hours) for back-to-back trip detection.
+  # Trips departing within this window of the first trip have their
+  # route SoC targets summed, with minSoc added once. Default: 24h.
+  back_to_back_window_hours: 24.0
+
+  # Factor applied to the OSRM route duration when computing the
+  # charge-by deadline (event time minus adjusted driving time).
+  # Values > 1.0 add a buffer (e.g. 1.2 = assume 20% longer drive).
+  # Values < 1.0 reduce the estimated driving time.
+  # Default: 1.0 (use OSRM duration as-is).
+  route_duration_factor: 1.0
+
+# ── Calendar ──────────────────────────────────────────────────────────────
+agenda:
+  # One or more iCal feeds to monitor.
+  # Trip events from all feeds are combined and sorted by departure time.
+  # The next upcoming trip across all calendars will be planned.
+  #
+  # Mailbox.org:   Calendar → right-click → Permissions → copy public URL
+  # Google:        Calendar settings → iCal address (private link)
+  # Apple iCloud:  Share calendar → copy link → replace 'webcal://' with 'https://'
+  # Nextcloud:     Calendar → share icon → copy link
+  feeds:
+    - url: "https://your-ical-url-here"
+      name: "Cindy"
+
+    - url: "https://partner-ical-url-here"
+      name: "John"
+
+  # How many days ahead to include upcoming trips. Default: 14 days.
+  lookahead_days: 14
+
+  # Tags that mark calendar events as departure/trip events.
+  #
+  # Target logic:
+  #   #trip + calendar location → routing (round trip) + EVCC minSoC = target SoC
+  #   #trip (no location)       → 100% SoC default
+  #
+  # match:
+  #   contains → tag appears anywhere in event name or description (default)
+  #   prefix   → event name starts with the tag
+  trip_mapping:
+    - tag: "#trip"
+      match: "contains"
+
+    - tag: "#departure"
+      match: "contains"
+
+
+# ── Scheduler ─────────────────────────────────────────────────────────────
+scheduler:
+  # How often (in seconds) the calendar is checked and the EVCC plan is updated.
+  # Default: 900 seconds (15 minutes).
+  poll_interval_seconds: 900

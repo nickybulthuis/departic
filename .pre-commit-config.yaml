@@ -1,0 +1,21 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files   # block accidentally committed large files
+      - id: check-case-conflict       # catch case-insensitive filename clashes
+      - id: check-json
+      - id: check-merge-conflict      # block unresolved merge conflict markers
+      - id: check-yaml
+      - id: end-of-file-fixer         # ensure files end with a newline
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending         # normalise CRLF → LF
+        args: [--fix=lf]
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.7  # keep in sync with ruff version in pyproject.toml [dependency-groups.dev]
+    hooks:
+      - id: ruff          # lint + auto-fix
+        args: [--fix]
+      - id: ruff-format   # format (replaces black)

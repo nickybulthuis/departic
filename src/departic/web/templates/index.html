@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Departic — EV Departure Planner</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{{ root_path }}/static/favicon.ico?v={{ static_v }}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ root_path }}/static/icon-192.png?v={{ static_v }}">
+
+  <!-- iOS home screen -->
+  <link rel="apple-touch-icon" href="{{ root_path }}/static/apple-touch-icon.png?v={{ static_v }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Departic">
+
+  <!-- Theme colour (address bar on mobile) -->
+  <meta name="theme-color" content="#f9fafb">
+
+  <link rel="stylesheet" href="{{ root_path }}/static/departic.css?v={{ static_v }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body data-page-reload="{{ page_reload_interval if configured else 0 }}">
+
+{# ── Macros ──────────────────────────────────────────────────────────── #}
+
+{% macro icon(name) -%}
+  <span class="icon is-small mr-1"><i class="fas fa-{{ name }}"></i></span>
+{%- endmacro %}
+
+{% macro feed_tag(name, extra_class="") -%}
+  {% if name -%}
+    <span class="tag {{ extra_class }} {{ name | feed_color }}" title="Calendar feed: {{ name }}">{{ icon('calendar-day') }}{{ name }}</span>
+  {%- endif %}
+{%- endmacro %}
+
+{% macro back_to_back_badge() -%}
+  <span class="tag is-warning is-small" title="Multiple trips within the back-to-back window — SoC targets are combined">
+    {{ icon('arrows-left-right') }}back-to-back
+  </span>
+{%- endmacro %}
+
+{# kept for legacy call-sites that don't pass b2b_calculation #}
+
+{% macro soc_progress(soc_pct, soc_source, item, small=false, uid="", calculation=none, b2b=none, avg_price=none) -%}
+  {% if soc_pct %}
+  {% set iid = "info-" ~ uid %}
+  {% set has_info = calculation or b2b or item.trip_cost_eur %}
+  <div class="is-flex is-align-items-center mt-2" style="gap:8px">
+    <progress class="progress {{ 'is-small ' if small }}{{ soc_source | soc_color }} mb-0"
+              max="100" value="{{ soc_pct }}" style="flex:1"
+              title="{{ 'Routing failed — no location or address could not be resolved, defaulting to 100%' if soc_source == 'routing_failed' else 'Charging target: ' ~ soc_pct ~ '% State of Charge' }}"></progress>
+    <span class="is-size-7 has-text-grey has-text-weight-semibold"
+          style="white-space:nowrap;min-width:24px;text-align:right"
+          title="Target State of Charge for this trip">{{ soc_pct }}%</span>
+    {% if has_info %}
+    <button class="trip-info-toggle" aria-expanded="false" aria-controls="{{ iid }}"
+            onclick="toggleCalc(this,'{{ iid }}')"
+            title="Show trip calculation details">
+      <i class="fas fa-circle-info"></i>
+    </button>
+    {% endif %}
+  </div>
+  {% if item.back_to_back %}
+  <div class="mt-1">
+    <span class="tag is-warning is-small"
+          title="Multiple trips within the back-to-back window — SoC targets are combined">
+      {{ icon('arrows-left-right') }}back-to-back
+    </span>
+  </div>
+  {% endif %}
+  {% if has_info %}
+  <div id="{{ iid }}" class="calc-collapse">
+    <div class="trip-info-panel mt-1">
+      {# Route SoC calculation #}
+      {% if calculation %}
+      <div class="trip-info-section">
+        <div class="trip-info-label">{{ icon('route') }}Route SoC</div>
+        <div class="plan-calc">
+          {{ calculation.one_way_km }}&nbsp;km × 2 = {{ calculation.round_trip_km }}&nbsp;km × {{ calculation.consumption }}&nbsp;kWh/100km = {{ calculation.round_trip_kwh }}&nbsp;kWh / {{ calculation.capacity_kwh }}&nbsp;kWh = {{ calculation.route_soc_pct }}% + {{ calculation.min_soc_pct }}%<sup>(min_soc)</sup> = <strong>{{ calculation.total_soc_pct }}%</strong>
+        </div>
+      </div>
+      {# Driving duration #}
+      {% if calculation.duration_min %}
+      <div class="trip-info-section">
+        <div class="trip-info-label">{{ icon('road') }}Drive time</div>
+        <div class="plan-calc">
+          {% if calculation.duration_factor %}
+          {{ calculation.duration_min | fmt_duration }} (OSRM) × {{ calculation.duration_factor | fmt_factor }} = <strong>{{ calculation.adjusted_duration_min | fmt_duration }}</strong>
+          {% else %}
+          <strong>{{ calculation.duration_min | fmt_duration }}</strong> (OSRM)
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% endif %}
+      {# Energy cost #}
+      {% if item.trip_cost_eur %}
+      <div class="trip-info-section">
+        <div class="trip-info-label">{{ icon('coins') }}Energy cost</div>
+        <div class="plan-calc">
+          {% if calculation and avg_price %}
+          {{ calculation.round_trip_kwh }}&nbsp;kWh × {{ avg_price | fmt_eur }}/kWh = <strong>{{ item.trip_cost_eur | fmt_eur }}</strong> <span style="opacity:.6">(30-day avg · round trip)</span>
+          {% else %}
+          <strong>{{ item.trip_cost_eur | fmt_eur }}</strong> <span style="opacity:.6">(30-day avg · round trip)</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {# Back-to-back calculation #}
+      {% if b2b %}
+      <div class="trip-info-section">
+        <div class="trip-info-label">{{ icon('arrows-left-right') }}Back-to-back</div>
+        <div class="plan-calc plan-calc-b2b">
+          {%- for t in b2b.trips -%}
+            {{ t.soc_pct }}%&nbsp;({{ t.summary }}){% if not loop.last %} + {% endif %}
+          {%- endfor %} + {{ b2b.min_soc_pct }}%<sup>(min_soc)</sup> = <strong>{{ b2b.total_soc_pct }}%</strong>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+{%- endmacro %}
+
+{% macro calc_table(c, uid="", b2b=none) -%}{# legacy shim — no longer used directly #}{%- endmacro %}
+{% macro b2b_badge_only() -%}{# legacy shim — no longer used directly #}{%- endmacro %}
+
+{# ── Page ────────────────────────────────────────────────────────────── #}
+
+<div style="max-width:600px;margin:0 auto;padding:28px 16px 56px">
+
+  <!-- Header -->
+  <div class="is-flex is-justify-content-space-between is-align-items-center mb-5">
+    <img src="{{ root_path }}/static/logo.png" alt="Departic" class="departic-logo">
+    <div class="is-flex is-align-items-center" style="gap:8px">
+      {% if configured %}
+      <form method="post" action="{{ root_path }}/api/toggle" style="display:inline">
+        {% if status.get('enabled', true) %}
+        <button class="button is-small is-success" type="submit" title="Pause automatic plan updates">
+          <span class="icon is-small"><i class="fas fa-pause"></i></span><span>Pause</span>
+        </button>
+        {% else %}
+        <button class="button is-small is-warning" type="submit" title="Resume automatic plan updates">
+          <span class="icon is-small"><i class="fas fa-play"></i></span><span>Resume</span>
+        </button>
+        {% endif %}
+      </form>
+      <form method="post" action="{{ root_path }}/api/trigger" style="display:inline">
+        <button class="button is-small is-info" type="submit" title="Trigger an immediate calendar check and plan update">
+          <span class="icon is-small"><i class="fas fa-rotate-right"></i></span><span>Refresh</span>
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not configured %}
+  <div class="notification is-warning">
+    <strong>Welcome to Departic</strong> — create the configuration file to get started:
+    <pre class="mt-2">cp departic.example.yaml {{ config_path }}
+# Edit the file and restart the container</pre>
+  </div>
+
+  {% else %}
+
+  {# ── Error banner ─────────────────────────────────────────────────── #}
+  {% if status.get('tick_error') %}
+  <div class="notification is-danger">
+    {{ icon('triangle-exclamation') }}{{ status.tick_error }}
+  </div>
+  {% endif %}
+
+  {% if not status.get('enabled', true) %}
+  <div class="notification is-warning">
+    {{ icon('pause') }}<strong>Paused</strong> — automatic plan updates are disabled.
+  </div>
+  {% endif %}
+
+  {# ── EVCC energy flow widget ───────────────────────────────────────── #}
+  {% set evcc = status.get('evcc_status') %}
+  {% if evcc %}
+  {% set mode = evcc.get('charging_mode') or '' %}
+  {% set gkw  = evcc.get('grid_power_kw') %}
+  {% set pvkw = evcc.get('pv_power_kw') %}
+  {% set ckw  = evcc.get('charge_power_kw') %}
+  {% set pv_active   = pvkw and pvkw > 0 %}
+  {% set grid_import = gkw is not none and gkw > 0 %}
+  {% set grid_export = gkw is not none and gkw < 0 %}
+  {% set car_active  = ckw and ckw > 0 %}
+  <div class="evcc-widget mb-4" id="evcc-widget"
+       data-evcc-poll="{{ root_path }}/api/evcc"
+       data-evcc-interval="{{ evcc_poll_interval }}">
+
+    {# Header #}
+    <div class="evcc-widget-header">
+      <span class="evcc-widget-title"><i class="fas fa-bolt"></i>EV charger</span>
+      <span class="evcc-header-right">
+        <span class="evcc-mode-badge mode-{{ mode }}">{{ mode or '–' }}</span>
+        {% if evcc.get('plan_soc_pct') %}
+        <span class="evcc-plan-chip"><i class="fas fa-calendar-check"></i>{{ evcc.plan_soc_pct }}&thinsp;% · {{ evcc.plan_time | fmt_time }}</span>
+        {% else %}
+        <span class="evcc-plan-chip evcc-plan-chip-none"><i class="fas fa-calendar-xmark"></i>no plan</span>
+        {% endif %}
+      </span>
+    </div>
+
+    {# Energy flow diagram — horizontal pipeline #}
+    <div class="ef-pipeline">
+
+      {# ── Left box: sources ── #}
+      <div class="ef-box ef-box-sources">
+        <div class="ef-source {% if pv_active %}is-active-solar{% endif %}">
+          <i class="fas fa-sun ef-source-icon"></i>
+          <span class="ef-source-value">{{ pvkw | fmt_power }}</span>
+          <span class="ef-source-label">solar</span>
+        </div>
+        <div class="ef-source-divider"></div>
+        <div class="ef-source {% if grid_import %}is-active-grid{% elif grid_export %}is-active-export{% endif %}">
+          <i class="fas fa-plug-circle-bolt ef-source-icon"></i>
+          <span class="ef-source-value">
+            {% if gkw is not none %}
+              {% if gkw < 0 %}<span class="ef-col-export">{{ (gkw * -1) | fmt_power }}</span>
+              {% elif gkw > 0 %}{{ gkw | fmt_power }}
+              {% else %}<span class="ef-col-muted">idle</span>{% endif %}
+            {% else %}–{% endif %}
+          </span>
+          <span class="ef-source-label">{% if grid_export %}export{% else %}grid{% endif %}</span>
+        </div>
+      </div>
+
+      {# ── Connector: sources → charger ── #}
+      <div class="ef-connector">
+        <div class="ef-connector-line"></div>
+        {% if pv_active or grid_import %}
+        <div class="ef-connector-dot ef-connector-dot-in"></div>
+        {% endif %}
+      </div>
+
+      {# ── Centre box: charger ── #}
+      <div class="ef-box ef-box-charger {% if car_active %}is-charging{% elif pv_active or grid_import %}is-active{% endif %}">
+        <i class="fas fa-charging-station ef-charger-icon-big"></i>
+        <span class="ef-source-value">{{ ckw | fmt_power }}</span>
+        <span class="ef-source-label">charger</span>
+      </div>
+
+      {# ── Connector: charger → car (only drawn when charging) ── #}
+      <div class="ef-connector {% if not car_active %}ef-connector-idle{% endif %}">
+        <div class="ef-connector-line"></div>
+        {% if car_active %}
+        <div class="ef-connector-dot ef-connector-dot-out"></div>
+        {% endif %}
+      </div>
+
+      {# ── Right box: car ── #}
+      {% set soc     = evcc.get('vehicle_soc_pct') %}
+      {% set target  = evcc.get('plan_soc_pct') %}
+      {% set soc_cls = 'is-soc-ok' if (soc is not none and target and soc >= target) else
+                       'is-soc-low' if (soc is not none and target and soc < target) else
+                       'is-connected' if evcc.get('vehicle_connected') else '' %}
+      <div class="ef-box ef-box-car {{ soc_cls }} {% if car_active %}is-charging{% endif %}">
+        <i class="fas fa-car-side ef-car-icon"></i>
+        {# SoC → target on one line #}
+        <span class="ef-source-value">
+          {% if evcc.get('vehicle_soc_pct') is not none %}
+            {{ evcc.vehicle_soc_pct }}&thinsp;%{% if evcc.get('plan_soc_pct') %}&ensp;→&ensp;{{ evcc.plan_soc_pct }}&thinsp;%{% endif %}
+          {% elif evcc.get('vehicle_connected') %}ready
+          {% else %}–{% endif %}
+        </span>
+        <span class="ef-source-label">
+          {% if car_active %}charging
+          {% elif evcc.get('vehicle_connected') %}connected
+          {% else %}disconnected{% endif %}
+        </span>
+      </div>
+
+    </div>
+
+    {# Footer stats #}
+    <div class="ef-footer">
+      <span class="ef-footer-stat"><i class="fas fa-leaf"></i>session&nbsp;<strong>{% if evcc.get('session_energy_kwh') is not none %}{{ evcc.session_energy_kwh }}&thinsp;kWh{% else %}–{% endif %}</strong></span>
+      <span class="ef-footer-sep">·</span>
+      <span class="ef-footer-stat"><i class="fas fa-hourglass-half"></i>remaining&nbsp;<strong>{% if evcc.get('charge_remaining_kwh') %}{{ evcc.charge_remaining_kwh }}&thinsp;kWh{% else %}–{% endif %}</strong></span>
+      <span class="ef-footer-sep">·</span>
+      <span class="ef-footer-stat"><i class="fas fa-chart-pie"></i>solar 30d&nbsp;<strong>{% if evcc.get('solar_pct_30d') is not none %}{{ evcc.solar_pct_30d | round | int }}&thinsp;%{% else %}–{% endif %}</strong></span>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Active plan card ─────────────────────────────────────────────── #}
+  {% set plan = status.get('active_plan') %}
+  {% if plan %}
+  <div class="card plan-card mb-5">
+    <div class="card-content py-3 px-4">
+      <p class="is-size-7 has-text-weight-bold is-uppercase plan-eyebrow mb-2" style="letter-spacing:1.2px">
+        {{ icon('bolt') }}Active charging plan
+      </p>
+      <div class="is-flex is-align-items-baseline" style="gap:14px">
+
+        <div class="has-text-left" style="min-width:52px;flex-shrink:0">
+          <div class="trip-countdown is-size-7 has-text-grey {{ 'is-soon' if plan.event_time | is_soon }}{{ ' is-departed' if plan.event_time | is_departed }}" title="Time until event">
+            {{ icon('hourglass-half') }}{{ plan.event_time | fmt_countdown }}
+          </div>
+          {% if plan.route_duration_min %}
+          <div class="trip-hdivider"></div>
+          <div class="is-size-7 has-text-grey" title="Estimated departure time">
+            {{ icon('car') }}{{ plan.event_time | fmt_departure(plan.route_duration_min) }}
+          </div>
+          <div class="trip-hdivider"></div>
+          <div class="is-size-7 has-text-grey" title="Estimated driving duration">
+            {{ icon('road') }}{{ plan.route_duration_min | fmt_duration }}
+          </div>
+          {% endif %}
+          {% if plan.trip_cost_eur %}
+          <div class="trip-hdivider"></div>
+          <div class="is-size-7 has-text-grey" title="Estimated round-trip energy cost (30-day avg price)">
+            {{ icon('coins') }}{{ plan.trip_cost_eur | fmt_eur }}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="trip-divider" style="align-self:stretch"></div>
+
+        <div style="flex:1;min-width:0">
+          <div class="is-flex is-justify-content-space-between is-align-items-baseline" style="gap:8px">
+            <div class="trip-name has-text-weight-semibold" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ plan.summary }}</div>
+            {{ feed_tag(plan.feed_name, 'is-small') }}
+          </div>
+            <div class="is-size-7 has-text-grey mt-1">
+              {{ icon('calendar-day') }}{{ plan.event_time | fmt_time }}
+            </div>
+          {% if plan.location %}
+          <div class="is-flex is-align-items-center is-flex-wrap-wrap mt-1" style="gap:4px">
+            <div class="trip-target is-size-7 has-text-grey">
+              {{ icon('location-dot') }}{{ plan.location }}{% if plan.route_km %} · {{ plan.route_km | round | int }}&nbsp;km{% endif %}
+            </div>
+          </div>
+          {% endif %}
+          {{ soc_progress(plan.target_soc_pct, plan.soc_source, plan, small=true, uid="plan", calculation=plan.calculation, b2b=plan.b2b_calculation, avg_price=status.get('avg_price_eur')) }}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Trip list ────────────────────────────────────────────────────── #}
+  <p class="is-size-7 has-text-grey has-text-weight-bold is-uppercase mb-2" style="letter-spacing:1.2px">{{ icon('calendar') }}Upcoming trips</p>
+  <div class="trip-list">
+    {% set trips = status.get('upcoming_trips', []) %}
+    {% if not trips %}
+    <div class="has-text-grey has-text-centered py-5">
+      <i class="fas fa-calendar-xmark" style="font-size:1.5rem;opacity:.3"></i>
+      <p class="mt-2">No upcoming trips</p>
+    </div>
+    {% endif %}
+    {% for t in trips %}
+    <div class="card trip-card">
+      <div class="card-content py-3 px-4">
+        <div class="is-flex is-align-items-baseline" style="gap:14px">
+
+          <div class="has-text-left" style="min-width:52px;flex-shrink:0">
+            <div class="trip-countdown is-size-7 has-text-grey {{ 'is-soon' if t.event_time | is_soon }}{{ ' is-departed' if t.event_time | is_departed }}" title="Time until event">
+              {{ icon('hourglass-half') }}{{ t.event_time | fmt_countdown }}
+            </div>
+            {% if t.route_duration_min %}
+            <div class="trip-hdivider"></div>
+            <div class="is-size-7 has-text-grey" title="Estimated departure time">
+              {{ icon('car') }}{{ t.event_time | fmt_departure(t.route_duration_min) }}
+            </div>
+            <div class="trip-hdivider"></div>
+            <div class="is-size-7 has-text-grey" title="Estimated driving duration">
+              {{ icon('road') }}{{ t.route_duration_min | fmt_duration }}
+            </div>
+            {% endif %}
+            {% if t.trip_cost_eur %}
+            <div class="trip-hdivider"></div>
+            <div class="is-size-7 has-text-grey" title="Estimated round-trip energy cost (30-day avg price)">
+              {{ icon('coins') }}{{ t.trip_cost_eur | fmt_eur }}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="trip-divider" style="align-self:stretch"></div>
+
+          <div style="flex:1;min-width:0">
+            <div class="is-flex is-justify-content-space-between is-align-items-baseline" style="gap:8px">
+              <div class="trip-name has-text-weight-semibold" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.summary }}</div>
+              {{ feed_tag(t.feed_name, 'is-small') }}
+            </div>
+            <div class="is-size-7 has-text-grey mt-1">
+              {{ icon('calendar-day') }}{{ t.event_time | fmt_time }}
+            </div>
+            <div class="is-flex is-align-items-center is-flex-wrap-wrap mt-1" style="gap:4px">
+              <div class="trip-target is-size-7 has-text-grey">
+                {{ icon('location-dot') }}{{ t.target_label }}
+              </div>
+            </div>
+            {{ soc_progress(t.target_soc_pct, t.soc_source, t, small=true, uid=loop.index, calculation=t.calculation, b2b=t.b2b_calculation, avg_price=status.get('avg_price_eur')) }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+
+  <footer class="footer departic-footer pt-4 pb-4">
+    <div class="content has-text-centered">
+      <div class="departic-footer-row">
+        <span title="Application version"><i class="fas fa-tag" style="font-size:.55rem;opacity:.6"></i>&nbsp;v{{ version }}</span>
+        <span class="departic-footer-sep">·</span>
+        <span title="Last refresh time"><i class="fas fa-clock" style="font-size:.55rem;opacity:.6"></i>&nbsp;{{ status.get('tick_updated', '–') }}</span>
+        {% if configured %}
+        <span class="departic-footer-sep">·</span>
+        {% set log_levels = ['debug', 'info', 'warning', 'error'] %}
+        <form method="post" action="{{ root_path }}/api/loglevel" class="departic-footer-form">
+          <select name="level" class="departic-footer-select">
+            {% for lvl in log_levels %}
+            <option value="{{ lvl }}" {{ 'selected' if current_log_level == lvl }}>{{ lvl | upper }}</option>
+            {% endfor %}
+          </select><button type="submit" class="departic-footer-btn">↵</button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="departic-footer-attr">
+        <a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim</a>
+        · <a href="https://project-osrm.org" target="_blank" rel="noopener">OSRM</a>
+        · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script src="{{ root_path }}/static/departic.js?v={{ static_v }}"></script>
+
+</body>
+</html>

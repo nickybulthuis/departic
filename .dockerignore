@@ -1,0 +1,29 @@
+# Version control & CI
+.git
+.github
+
+# Dev tooling
+.ruff_cache
+.venv
+.idea
+.vscode
+.pre-commit-config.yaml
+.editorconfig
+
+# Python caches
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+htmlcov/
+
+# Build artifacts
+dist/
+*.egg-info
+
+# Docs & non-runtime files
+docs/
+CONTRIBUTING.md
+SECURITY.md
+LICENSE
