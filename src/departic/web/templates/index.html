@@ -263,10 +263,9 @@
                        'is-connected' if evcc.get('vehicle_connected') else '' %}
       <div class="ef-box ef-box-car {{ soc_cls }} {% if car_active %}is-charging{% endif %}">
         <i class="fas fa-car-side ef-car-icon"></i>
-        {# SoC → target on one line #}
         <span class="ef-source-value">
           {% if evcc.get('vehicle_soc_pct') is not none %}
-            {{ evcc.vehicle_soc_pct }}&thinsp;%{% if evcc.get('plan_soc_pct') %}&ensp;→&ensp;{{ evcc.plan_soc_pct }}&thinsp;%{% endif %}
+            {{ evcc.vehicle_soc_pct }}&thinsp;%
           {% elif evcc.get('vehicle_connected') %}ready
           {% else %}–{% endif %}
         </span>

@@ -199,8 +199,7 @@ function toggleCalc(btn, targetId) {
       var carVal = car.querySelector('.ef-source-value');
       if (carVal) {
         if (d.vehicle_soc_pct !== null && d.vehicle_soc_pct !== undefined) {
-          carVal.textContent = d.vehicle_soc_pct + '\u2009%' +
-            (d.plan_soc_pct ? '\u2002\u2192\u2002' + d.plan_soc_pct + '\u2009%' : '');
+          carVal.textContent = d.vehicle_soc_pct + '\u2009%';
         } else if (conn) {
           carVal.textContent = 'ready';
         } else {
