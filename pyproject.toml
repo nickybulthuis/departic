@@ -22,7 +22,7 @@ dependencies = [
     "requests>=2.32",
     "icalendar>=6.0",
     "python-dateutil>=2.9",
-    "python-multipart>=0.0.9",
+    "python-multipart>=0.0.26",
     "pyyaml>=6.0",
 ]
 
@@ -33,10 +33,10 @@ Issues = "https://github.com/nickybulthuis/departic/issues"
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
-    "pytest>=9.0.2",
+    "pytest>=9.0.3",
     "pytest-cov>=7.0.0",
     "ruff>=0.15.7",
-    "responses>=0.25",
+    "responses>=0.26.0",
     "pytest-asyncio>=0.23",
     "httpx>=0.28.1",
 ]
