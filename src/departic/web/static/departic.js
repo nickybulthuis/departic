@@ -94,10 +94,17 @@ function toggleCalc(btn, targetId) {
     var mode   = d.charging_mode || '';
 
     // ── Header: mode badge ──
+    var modeLabels = {
+      'pv':    'PV — charge only from solar surplus',
+      'minpv': 'Min+PV — charge at minimum power, boost with solar surplus',
+      'now':   'Now — charge immediately at full power',
+      'off':   'Off — charging disabled'
+    };
     var badge = widget.querySelector('.evcc-mode-badge');
     if (badge) {
       badge.className = 'evcc-mode-badge mode-' + mode;
       badge.textContent = mode || '\u2013';
+      badge.title = mode ? (modeLabels[mode] || mode) : 'Charging mode unknown';
     }
 
     // ── Header: plan chip ──
@@ -107,9 +114,11 @@ function toggleCalc(btn, targetId) {
         chip.className = 'evcc-plan-chip';
         chip.innerHTML = '<i class="fas fa-calendar-check"></i>' +
           d.plan_soc_pct + '\u2009% \u00b7 ' + fmtTime(d.plan_time);
+        chip.title = 'Charging plan: reach ' + d.plan_soc_pct + '% by ' + fmtTime(d.plan_time);
       } else {
         chip.className = 'evcc-plan-chip evcc-plan-chip-none';
         chip.innerHTML = '<i class="fas fa-calendar-xmark"></i>no plan';
+        chip.title = 'No charging plan set in EVCC';
       }
     }
 
@@ -117,6 +126,7 @@ function toggleCalc(btn, targetId) {
     var solRow = widget.querySelector('.ef-box-sources .ef-source:first-child');
     if (solRow) {
       solRow.className = 'ef-source' + (pvOn ? ' is-active-solar' : '');
+      solRow.title = pvOn ? 'Solar generation: ' + fmtPower(pv) : 'No solar generation';
       var sv = solRow.querySelector('.ef-source-value');
       if (sv) sv.textContent = fmtPower(pv);
     }
@@ -130,12 +140,16 @@ function toggleCalc(btn, targetId) {
       if (gv) {
         if (gkw === null || gkw === undefined) {
           gv.innerHTML = '\u2013';
+          gridRow.title = 'Grid power unknown';
         } else if (gkw < 0) {
           gv.innerHTML = '<span class="ef-col-export">' + fmtPower(-gkw) + '</span>';
+          gridRow.title = 'Exporting ' + fmtPower(-gkw) + ' to the grid';
         } else if (gkw > 0) {
           gv.textContent = fmtPower(gkw);
+          gridRow.title = 'Importing ' + fmtPower(gkw) + ' from the grid';
         } else {
           gv.innerHTML = '<span class="ef-col-muted">idle</span>';
+          gridRow.title = 'Grid idle — no import or export';
         }
       }
       var gl = gridRow.querySelector('.ef-source-label');
@@ -162,6 +176,10 @@ function toggleCalc(btn, targetId) {
     if (charger) {
       charger.className = 'ef-box ef-box-charger' +
         (carOn ? ' is-charging' : (pvOn || gridIn) ? ' is-active' : '');
+      charger.title = carOn
+        ? 'Charger active — delivering ' + fmtPower(ckw) + ' to the vehicle'
+        : (pvOn || gridIn) ? 'Charger ready — power available but vehicle not charging'
+        : 'Charger idle';
       var cv = charger.querySelector('.ef-source-value');
       if (cv) cv.textContent = fmtPower(ckw);
     }
@@ -195,6 +213,21 @@ function toggleCalc(btn, targetId) {
 
       car.className = 'ef-box ef-box-car' + socCls + (carOn ? ' is-charging' : '');
 
+      // Tooltip
+      var carTooltip = '';
+      if (d.vehicle_soc_pct !== null && d.vehicle_soc_pct !== undefined) {
+        carTooltip = 'State of Charge: ' + d.vehicle_soc_pct + '%';
+        if (d.plan_soc_pct) {
+          carTooltip += ' — target: ' + d.plan_soc_pct + '%';
+          carTooltip += socOk ? ' (target reached)' : ' (charging needed)';
+        }
+      } else if (conn) {
+        carTooltip = 'Vehicle connected — SoC not available';
+      } else {
+        carTooltip = 'Vehicle not connected';
+      }
+      car.title = carTooltip;
+
       // SoC → target on one line
       var carVal = car.querySelector('.ef-source-value');
       if (carVal) {
@@ -217,6 +250,7 @@ function toggleCalc(btn, targetId) {
     }
 
     // ── Footer stats ──
+    var footerStats = widget.querySelectorAll('.ef-footer-stat');
     var footerStrongs = widget.querySelectorAll('.ef-footer-stat strong');
     if (footerStrongs.length >= 3) {
       footerStrongs[0].textContent = d.session_energy_kwh !== null && d.session_energy_kwh !== undefined
@@ -225,6 +259,15 @@ function toggleCalc(btn, targetId) {
         ? d.charge_remaining_kwh + '\u2009kWh' : '\u2013';
       footerStrongs[2].textContent = d.solar_pct_30d !== null && d.solar_pct_30d !== undefined
         ? Math.round(d.solar_pct_30d) + '\u2009%' : '\u2013';
+    }
+    if (footerStats.length >= 3) {
+      footerStats[0].title = 'Energy charged in the current session';
+      footerStats[1].title = d.charge_remaining_kwh
+        ? 'Energy still needed to reach the charge target (' + d.charge_remaining_kwh + '\u2009kWh remaining)'
+        : 'No energy remaining to charge — target already reached or no plan active';
+      footerStats[2].title = d.solar_pct_30d !== null && d.solar_pct_30d !== undefined
+        ? 'Solar share of charged energy over the last 30 days (' + Math.round(d.solar_pct_30d) + '%)'
+        : 'Solar share over 30 days — data unavailable';
     }
   }
 
@@ -236,7 +279,7 @@ function toggleCalc(btn, targetId) {
   }
 
   setInterval(poll, interval * 1000);
-  // first poll fires after one full interval; page load already has fresh data
+  poll(); // fire immediately — widget skeleton has no state; JS owns all rendering
 })();
 
 

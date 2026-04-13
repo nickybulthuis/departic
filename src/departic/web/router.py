@@ -202,6 +202,8 @@ async def dashboard(request: Request):
         logging.getLogger("departic").level or logging.getLogger().level
     ).lower()
 
+    evcc_url = cfg.evcc.url if (configured and cfg) else None
+
     return templates.TemplateResponse(
         request=request,
         name="index.html",
@@ -215,6 +217,7 @@ async def dashboard(request: Request):
             "version": status.get("version", __version__),
             "evcc_poll_interval": evcc_poll_interval,
             "page_reload_interval": page_reload_interval,
+            "evcc_url": evcc_url,
         },
     )
 
