@@ -225,6 +225,14 @@ html, body {
   gap: 5px;
 }
 
+.evcc-widget-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+.evcc-widget-title-link:hover {
+  text-decoration: underline;
+}
+
 .evcc-plan-chip {
   display: inline-flex;
   align-items: center;

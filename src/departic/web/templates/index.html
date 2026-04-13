@@ -181,30 +181,21 @@
   {% endif %}
 
   {# ── EVCC energy flow widget ───────────────────────────────────────── #}
-  {% set evcc = status.get('evcc_status') %}
-  {% if evcc %}
-  {% set mode = evcc.get('charging_mode') or '' %}
-  {% set gkw  = evcc.get('grid_power_kw') %}
-  {% set pvkw = evcc.get('pv_power_kw') %}
-  {% set ckw  = evcc.get('charge_power_kw') %}
-  {% set pv_active   = pvkw and pvkw > 0 %}
-  {% set grid_import = gkw is not none and gkw > 0 %}
-  {% set grid_export = gkw is not none and gkw < 0 %}
-  {% set car_active  = ckw and ckw > 0 %}
+  {# State is rendered entirely by applyEvcc() in departic.js on first poll. #}
+  {% if status.get('evcc_status') %}
   <div class="evcc-widget mb-4" id="evcc-widget"
        data-evcc-poll="{{ root_path }}/api/evcc"
        data-evcc-interval="{{ evcc_poll_interval }}">
 
     {# Header #}
     <div class="evcc-widget-header">
-      <span class="evcc-widget-title"><i class="fas fa-bolt"></i>EV charger</span>
+      <span class="evcc-widget-title">
+        <i class="fas fa-bolt"></i>
+        {% if evcc_url %}<a href="{{ evcc_url }}" target="_blank" rel="noopener" class="evcc-widget-title-link" title="Open EVCC › {{ evcc_url }}">EV charger</a>{% else %}EV charger{% endif %}
+      </span>
       <span class="evcc-header-right">
-        <span class="evcc-mode-badge mode-{{ mode }}">{{ mode or '–' }}</span>
-        {% if evcc.get('plan_soc_pct') %}
-        <span class="evcc-plan-chip"><i class="fas fa-calendar-check"></i>{{ evcc.plan_soc_pct }}&thinsp;% · {{ evcc.plan_time | fmt_time }}</span>
-        {% else %}
+        <span class="evcc-mode-badge"></span>
         <span class="evcc-plan-chip evcc-plan-chip-none"><i class="fas fa-calendar-xmark"></i>no plan</span>
-        {% endif %}
       </span>
     </div>
 
@@ -213,78 +204,52 @@
 
       {# ── Left box: sources ── #}
       <div class="ef-box ef-box-sources">
-        <div class="ef-source {% if pv_active %}is-active-solar{% endif %}">
+        <div class="ef-source">
           <i class="fas fa-sun ef-source-icon"></i>
-          <span class="ef-source-value">{{ pvkw | fmt_power }}</span>
+          <span class="ef-source-value">–</span>
           <span class="ef-source-label">solar</span>
         </div>
         <div class="ef-source-divider"></div>
-        <div class="ef-source {% if grid_import %}is-active-grid{% elif grid_export %}is-active-export{% endif %}">
+        <div class="ef-source">
           <i class="fas fa-plug-circle-bolt ef-source-icon"></i>
-          <span class="ef-source-value">
-            {% if gkw is not none %}
-              {% if gkw < 0 %}<span class="ef-col-export">{{ (gkw * -1) | fmt_power }}</span>
-              {% elif gkw > 0 %}{{ gkw | fmt_power }}
-              {% else %}<span class="ef-col-muted">idle</span>{% endif %}
-            {% else %}–{% endif %}
-          </span>
-          <span class="ef-source-label">{% if grid_export %}export{% else %}grid{% endif %}</span>
+          <span class="ef-source-value">–</span>
+          <span class="ef-source-label">grid</span>
         </div>
       </div>
 
       {# ── Connector: sources → charger ── #}
       <div class="ef-connector">
         <div class="ef-connector-line"></div>
-        {% if pv_active or grid_import %}
-        <div class="ef-connector-dot ef-connector-dot-in"></div>
-        {% endif %}
       </div>
 
       {# ── Centre box: charger ── #}
-      <div class="ef-box ef-box-charger {% if car_active %}is-charging{% elif pv_active or grid_import %}is-active{% endif %}">
+      <div class="ef-box ef-box-charger">
         <i class="fas fa-charging-station ef-charger-icon-big"></i>
-        <span class="ef-source-value">{{ ckw | fmt_power }}</span>
+        <span class="ef-source-value">–</span>
         <span class="ef-source-label">charger</span>
       </div>
 
-      {# ── Connector: charger → car (only drawn when charging) ── #}
-      <div class="ef-connector {% if not car_active %}ef-connector-idle{% endif %}">
+      {# ── Connector: charger → car ── #}
+      <div class="ef-connector ef-connector-idle">
         <div class="ef-connector-line"></div>
-        {% if car_active %}
-        <div class="ef-connector-dot ef-connector-dot-out"></div>
-        {% endif %}
       </div>
 
       {# ── Right box: car ── #}
-      {% set soc     = evcc.get('vehicle_soc_pct') %}
-      {% set target  = evcc.get('plan_soc_pct') %}
-      {% set soc_cls = 'is-soc-ok' if (soc is not none and target and soc >= target) else
-                       'is-soc-low' if (soc is not none and target and soc < target) else
-                       'is-connected' if evcc.get('vehicle_connected') else '' %}
-      <div class="ef-box ef-box-car {{ soc_cls }} {% if car_active %}is-charging{% endif %}">
+      <div class="ef-box ef-box-car">
         <i class="fas fa-car-side ef-car-icon"></i>
-        <span class="ef-source-value">
-          {% if evcc.get('vehicle_soc_pct') is not none %}
-            {{ evcc.vehicle_soc_pct }}&thinsp;%
-          {% elif evcc.get('vehicle_connected') %}ready
-          {% else %}–{% endif %}
-        </span>
-        <span class="ef-source-label">
-          {% if car_active %}charging
-          {% elif evcc.get('vehicle_connected') %}connected
-          {% else %}disconnected{% endif %}
-        </span>
+        <span class="ef-source-value">–</span>
+        <span class="ef-source-label">disconnected</span>
       </div>
 
     </div>
 
     {# Footer stats #}
     <div class="ef-footer">
-      <span class="ef-footer-stat"><i class="fas fa-leaf"></i>session&nbsp;<strong>{% if evcc.get('session_energy_kwh') is not none %}{{ evcc.session_energy_kwh }}&thinsp;kWh{% else %}–{% endif %}</strong></span>
+      <span class="ef-footer-stat"><i class="fas fa-leaf"></i>session&nbsp;<strong>–</strong></span>
       <span class="ef-footer-sep">·</span>
-      <span class="ef-footer-stat"><i class="fas fa-hourglass-half"></i>remaining&nbsp;<strong>{% if evcc.get('charge_remaining_kwh') %}{{ evcc.charge_remaining_kwh }}&thinsp;kWh{% else %}–{% endif %}</strong></span>
+      <span class="ef-footer-stat"><i class="fas fa-hourglass-half"></i>remaining&nbsp;<strong>–</strong></span>
       <span class="ef-footer-sep">·</span>
-      <span class="ef-footer-stat"><i class="fas fa-chart-pie"></i>solar 30d&nbsp;<strong>{% if evcc.get('solar_pct_30d') is not none %}{{ evcc.solar_pct_30d | round | int }}&thinsp;%{% else %}–{% endif %}</strong></span>
+      <span class="ef-footer-stat"><i class="fas fa-chart-pie"></i>solar 30d&nbsp;<strong>–</strong></span>
     </div>
   </div>
   {% endif %}
