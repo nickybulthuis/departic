@@ -1,6 +1,6 @@
 [project]
 name = "departic"
-version = "0.1.1"
+version = "0.1.2"
 description = "Departure-driven EV charge planning via iCal and EVCC."
 readme = "README.md"
 license = "MIT"
