@@ -56,7 +56,7 @@ class TripEvent(BaseModel):
 
     @property
     def trip_id(self) -> str:
-        return str(self.event_time)
+        return f"{self.event_time}|{self.summary}|{self.feed_name}"
 
 
 class ActiveTripState(BaseModel):
