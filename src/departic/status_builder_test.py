@@ -375,14 +375,24 @@ def test_back_to_back_ids_empty_when_not_active(cfg):
 
 
 def test_trip_id_unique_same_time_different_name():
-    """Two events at the same time but with different names must have distinct trip_ids."""
+    """Two events at the same time but with different names must have
+    distinct trip_ids."""
     event_time = datetime.now(tz.tzlocal()) + timedelta(hours=6)
-    e1 = TripEvent(summary="Work meeting", event_time=event_time, location="Office", feed_name="Cal")
-    e2 = TripEvent(summary="School run", event_time=event_time, location="School", feed_name="Cal")
+    e1 = TripEvent(
+        summary="Work meeting",
+        event_time=event_time,
+        location="Office",
+        feed_name="Cal",
+    )
+    e2 = TripEvent(
+        summary="School run", event_time=event_time, location="School", feed_name="Cal"
+    )
     assert e1.trip_id != e2.trip_id
 
 
-def test_precalculate_labels_same_time_different_name_keeps_both_locations(cfg, vehicle):
+def test_precalculate_labels_same_time_different_name_keeps_both_locations(
+    cfg, vehicle
+):
     """Regression: two events at the same time must each retain their own location."""
     geocode_cache.set("Smallville, Midwest, Freedonia", Coords(10.123, 20.456))
     geocode_cache.set("Office", Coords(11.1, 21.1))
@@ -391,8 +401,15 @@ def test_precalculate_labels_same_time_different_name_keeps_both_locations(cfg, 
     route_cache.set("Smallville, Midwest, Freedonia", "School", 10.0, 600.0)
 
     event_time = datetime.now(tz.tzlocal()) + timedelta(hours=6)
-    e1 = TripEvent(summary="Work meeting", event_time=event_time, location="Office", feed_name="Cal")
-    e2 = TripEvent(summary="School run", event_time=event_time, location="School", feed_name="Cal")
+    e1 = TripEvent(
+        summary="Work meeting",
+        event_time=event_time,
+        location="Office",
+        feed_name="Cal",
+    )
+    e2 = TripEvent(
+        summary="School run", event_time=event_time, location="School", feed_name="Cal"
+    )
 
     results = precalculate_labels(
         events=[e1, e2],
