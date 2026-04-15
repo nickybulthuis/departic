@@ -16,6 +16,7 @@ from departic import __version__, scheduler
 from departic import state as state_store
 from departic.config import CONFIG_PATH, Settings
 from departic.evcc import EvccAPI
+from departic.notifier import NotifyEvent, notify
 
 ROOT_PATH = os.environ.get("ROOT_PATH", "")
 
@@ -242,6 +243,11 @@ async def api_toggle():
     updated = current.model_copy(update={"enabled": not current.enabled})
     state_store.save(updated)
     scheduler.set_enabled(updated.enabled)
+
+    cfg = Settings.get()
+    if cfg:
+        notify(cfg.notifications, NotifyEvent.TOGGLED, enabled=updated.enabled)
+
     return RedirectResponse(url=f"{ROOT_PATH}/", status_code=303)
 
 
