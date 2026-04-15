@@ -320,6 +320,9 @@ def run_cycle(
                 }
             )
         log.info("Plan was removed in EVCC — reapplying.")
+        reapply = True
+    else:
+        reapply = False
 
     try:
         evcc.set_plan_soc(vehicle.name, target.soc_pct, deadline)
@@ -335,25 +338,26 @@ def run_cycle(
         vehicle.name,
     )
 
-    # ── Notify ────────────────────────────────────────────────────────
-    old_soc = state.active_trip_target_soc
-    if old_soc is not None and state.active_trip_id:
-        notify(
-            cfg.notifications,
-            NotifyEvent.PLAN_UPDATED,
-            summary=next_trip.summary,
-            old_soc_pct=old_soc,
-            new_soc_pct=target.soc_pct,
-        )
-    else:
-        notify(
-            cfg.notifications,
-            NotifyEvent.PLAN_ACTIVATED,
-            summary=next_trip.summary,
-            soc_pct=target.soc_pct,
-            deadline=deadline.strftime("%a %d-%m %H:%M"),
-            route_km=target.route_km,
-        )
+    # ── Notify (skip silent re-applies) ───────────────────────────────
+    if not reapply:
+        old_soc = state.active_trip_target_soc
+        if old_soc is not None and state.active_trip_id:
+            notify(
+                cfg.notifications,
+                NotifyEvent.PLAN_UPDATED,
+                summary=next_trip.summary,
+                old_soc_pct=old_soc,
+                new_soc_pct=target.soc_pct,
+            )
+        else:
+            notify(
+                cfg.notifications,
+                NotifyEvent.PLAN_ACTIVATED,
+                summary=next_trip.summary,
+                soc_pct=target.soc_pct,
+                deadline=deadline.strftime("%a %d-%m %H:%M"),
+                route_km=target.route_km,
+            )
 
     return state.model_copy(
         update={

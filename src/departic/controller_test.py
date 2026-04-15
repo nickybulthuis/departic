@@ -342,6 +342,43 @@ def test_plan_reapplied_if_removed_in_evcc(evcc_url, evcc_state, cfg):
 
 
 @rsps_lib.activate
+def test_reapply_does_not_notify(evcc_url, evcc_state, cfg):
+    """When EVCC removed the plan (target reached) and Departic re-applies it,
+    no notification should be sent — this is a silent re-apply."""
+    event = make_event(hours_from_now=24)
+    state = AppState(active_trip=ActiveTripState(trip_id=event.trip_id, target_soc=100))
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state)
+    rsps_lib.add(
+        rsps_lib.GET,
+        f"{evcc_url}/api/vehicles/mycar/plan/soc",
+        json={"result": {"soc": 0, "time": "0001-01-01T00:00:00Z"}},
+    )
+    rsps_lib.add(
+        rsps_lib.POST,
+        plan_post_url(evcc_url, "mycar", 100, event.event_time),
+        json={"result": {}},
+    )
+    with patch("departic.controller.notify") as mock_notify:
+        run_cycle(make_evcc(evcc_url), [event], state, cfg)
+        mock_notify.assert_not_called()
+
+
+@rsps_lib.activate
+def test_new_plan_does_notify(evcc_url, evcc_state, cfg):
+    """A genuinely new plan (no prior active trip) should send a notification."""
+    event = make_event(hours_from_now=24)
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state)
+    rsps_lib.add(
+        rsps_lib.POST,
+        plan_post_url(evcc_url, "mycar", 100, event.event_time),
+        json={"result": {}},
+    )
+    with patch("departic.controller.notify") as mock_notify:
+        run_cycle(make_evcc(evcc_url), [event], AppState(), cfg)
+        mock_notify.assert_called_once()
+
+
+@rsps_lib.activate
 def test_no_plan_when_disabled(evcc_url, cfg):
     run_cycle(make_evcc(evcc_url), [make_event()], AppState(enabled=False), cfg)
     assert len(rsps_lib.calls) == 0
