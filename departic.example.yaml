@@ -86,3 +86,55 @@ scheduler:
   # How often (in seconds) the calendar is checked and the EVCC plan is updated.
   # Default: 900 seconds (15 minutes).
   poll_interval_seconds: 900
+
+
+# ── Notifications ────────────────────────────────────────────────────────
+# Push notifications on important events (plan set, cleared, routing failed, etc.).
+# Uses Apprise — supports 80+ services. Add one or more notification URLs.
+# See https://github.com/caronc/apprise/wiki for all supported services.
+#
+# notifications:
+#   urls:
+#     - "tgram://bottoken/ChatID"               # Telegram
+#     - "slack://TokenA/TokenB/TokenC/#channel"  # Slack
+#     - "discord://WebhookID/WebhookToken"       # Discord
+#     - "pover://user@token"                     # Pushover
+#     - "ntfy://ntfy.sh/my-departic"             # ntfy.sh
+#     - "gotify://host/token"                    # Gotify
+#     - "mailto://user:pass@gmail.com"           # Email
+#
+#   # Per-event settings: enable/disable individual notifications and
+#   # customise the title and body with {variable} placeholders.
+#   # All events are enabled by default. Omit or set enabled: false to disable.
+#   events:
+#     plan_activated:                            # New charging plan set
+#       enabled: true
+#       # Variables: {summary}, {soc_pct}, {deadline}, {route_km}, {route_info}
+#       title: "🔋 Plan activated"
+#       body: "{summary} — {soc_pct}% SoC by {deadline}{route_info}"
+#
+#     plan_updated:                              # Existing plan changed
+#       enabled: true
+#       # Variables: {summary}, {old_soc_pct}, {new_soc_pct}
+#       title: "🔄 Plan updated"
+#       body: "{summary} — {old_soc_pct}% → {new_soc_pct}% SoC"
+#
+#     plan_cleared:                              # Charging plan removed
+#       enabled: true
+#       # Variables: {summary}
+#       title: "✅ Plan cleared"
+#       body: "Charging plan removed (was: {summary})."
+#
+#     routing_failed:                            # Route calculation failed
+#       enabled: true
+#       # Variables: {summary}, {location}
+#       title: "⚠️ Routing failed"
+#       body: "{summary} → {location} — using default 100% SoC."
+#
+#     toggled:                                   # Departic enabled/disabled
+#       enabled: true
+#       # Variables: {enabled}, {label}, {emoji}
+#       title: "{emoji} Departic {label}"
+#       body: "Departic has been {label}."
+
+

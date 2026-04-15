@@ -29,6 +29,7 @@ from departic.models import (
     TripEvent,
     VehicleInfo,
 )
+from departic.notifier import NotifyEvent, notify
 from departic.routing import calculate_trip_soc, enrich_calculation
 
 if TYPE_CHECKING:
@@ -97,6 +98,12 @@ def _clear_plan_if_needed(evcc: EvccAPI, state: AppState, cfg: Settings) -> AppS
         except requests.RequestException:
             log.exception("Failed to delete EVCC plan")
 
+    notify(
+        cfg.notifications,
+        NotifyEvent.PLAN_CLEARED,
+        summary=state.active_trip_target_label or state.active_trip_id,
+    )
+
     return state.clear_plan()
 
 
@@ -138,6 +145,12 @@ def _resolve_target(
 
     if trip_soc is None:
         log.warning("Routing failed, falling back to 100%% SoC.")
+        notify(
+            cfg.notifications,
+            NotifyEvent.ROUTING_FAILED,
+            summary=event.summary,
+            location=event.location,
+        )
         return TripTarget(
             soc_pct=100,
             source=TargetSource.ROUTING_FAILED,
@@ -321,6 +334,26 @@ def run_cycle(
         target.soc_pct,
         vehicle.name,
     )
+
+    # ── Notify ────────────────────────────────────────────────────────
+    old_soc = state.active_trip_target_soc
+    if old_soc is not None and state.active_trip_id:
+        notify(
+            cfg.notifications,
+            NotifyEvent.PLAN_UPDATED,
+            summary=next_trip.summary,
+            old_soc_pct=old_soc,
+            new_soc_pct=target.soc_pct,
+        )
+    else:
+        notify(
+            cfg.notifications,
+            NotifyEvent.PLAN_ACTIVATED,
+            summary=next_trip.summary,
+            soc_pct=target.soc_pct,
+            deadline=deadline.strftime("%a %d-%m %H:%M"),
+            route_km=target.route_km,
+        )
 
     return state.model_copy(
         update={

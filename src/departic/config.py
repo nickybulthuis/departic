@@ -130,11 +130,86 @@ class SchedulerConfig(BaseModel):
     )
 
 
+class EventNotificationConfig(BaseModel):
+    enabled: bool = Field(
+        default=True,
+        description="Whether this event type triggers a notification.",
+    )
+    title: str = Field(
+        default="",
+        description=(
+            "Custom title template. Supports {variable} placeholders. "
+            "Leave empty to use the built-in default."
+        ),
+    )
+    body: str = Field(
+        default="",
+        description=(
+            "Custom body template. Supports {variable} placeholders. "
+            "Leave empty to use the built-in default."
+        ),
+    )
+
+
+class EventsConfig(BaseModel):
+    plan_activated: EventNotificationConfig = Field(
+        default_factory=EventNotificationConfig,
+        description=(
+            "New charging plan set. "
+            "Variables: {summary}, {soc_pct}, {deadline}, {route_km}"
+        ),
+    )
+    plan_updated: EventNotificationConfig = Field(
+        default_factory=EventNotificationConfig,
+        description=(
+            "Existing plan changed. Variables: {summary}, {old_soc_pct}, {new_soc_pct}"
+        ),
+    )
+    plan_cleared: EventNotificationConfig = Field(
+        default_factory=EventNotificationConfig,
+        description=("Charging plan removed. Variables: {summary}"),
+    )
+    routing_failed: EventNotificationConfig = Field(
+        default_factory=EventNotificationConfig,
+        description=(
+            "Route calculation failed, fell back to 100%. "
+            "Variables: {summary}, {location}"
+        ),
+    )
+    toggled: EventNotificationConfig = Field(
+        default_factory=EventNotificationConfig,
+        description=("Departic enabled or disabled. Variables: {enabled}, {label}"),
+    )
+
+
+class NotificationsConfig(BaseModel):
+    urls: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of Apprise notification URLs. "
+            "Supports 80+ services: Telegram, Slack, Discord, "
+            "Pushover, ntfy, email, etc. "
+            "See https://github.com/caronc/apprise/wiki for "
+            "all supported services."
+        ),
+    )
+    events: EventsConfig = Field(
+        default_factory=EventsConfig,
+        description=(
+            "Per-event notification settings (enable/disable, custom messages)."
+        ),
+    )
+
+    def is_configured(self) -> bool:
+        return bool(self.urls)
+
+
 class Settings(BaseModel):
     evcc: EvccConfig
     vehicle: VehicleConfig = Field(default_factory=VehicleConfig)
     agenda: AgendaConfig
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
+    notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
 
     def is_configured(self) -> bool:
         return bool(self.evcc.url and self.agenda.feeds)
