@@ -229,13 +229,21 @@ async def test_api_toggle(client):
     with (
         patch("departic.web.router.state_store") as mock_store,
         patch("departic.web.router.scheduler") as mock_sched,
+        patch("departic.web.router.notify") as mock_notify,
+        patch("departic.web.router.Settings") as mock_settings,
     ):
         mock_store.load.return_value = AppState(enabled=True)
+        mock_settings.get.return_value = Settings(
+            evcc=EvccConfig(url="http://evcc.test"),
+            vehicle=VehicleConfig(),
+            agenda=AgendaConfig(feeds=[]),
+        )
         r = await client.post("/api/toggle")
     assert r.status_code == 303
     assert r.headers["location"] == "/"
     mock_store.save.assert_called_once()
     mock_sched.set_enabled.assert_called_once_with(False)
+    mock_notify.assert_called_once()
 
 
 async def test_api_trigger_success(client):
