@@ -162,16 +162,12 @@ class EventsConfig(BaseModel):
     plan_updated: EventNotificationConfig = Field(
         default_factory=EventNotificationConfig,
         description=(
-            "Existing plan changed. "
-            "Variables: {summary}, {old_soc_pct}, {new_soc_pct}"
+            "Existing plan changed. Variables: {summary}, {old_soc_pct}, {new_soc_pct}"
         ),
     )
     plan_cleared: EventNotificationConfig = Field(
         default_factory=EventNotificationConfig,
-        description=(
-            "Charging plan removed. "
-            "Variables: {summary}"
-        ),
+        description=("Charging plan removed. Variables: {summary}"),
     )
     routing_failed: EventNotificationConfig = Field(
         default_factory=EventNotificationConfig,
@@ -182,10 +178,7 @@ class EventsConfig(BaseModel):
     )
     toggled: EventNotificationConfig = Field(
         default_factory=EventNotificationConfig,
-        description=(
-            "Departic enabled or disabled. "
-            "Variables: {enabled}, {label}"
-        ),
+        description=("Departic enabled or disabled. Variables: {enabled}, {label}"),
     )
 
 
@@ -194,13 +187,17 @@ class NotificationsConfig(BaseModel):
         default_factory=list,
         description=(
             "List of Apprise notification URLs. "
-            "Supports 80+ services: Telegram, Slack, Discord, Pushover, ntfy, email, etc. "
-            "See https://github.com/caronc/apprise/wiki for all supported services."
+            "Supports 80+ services: Telegram, Slack, Discord, "
+            "Pushover, ntfy, email, etc. "
+            "See https://github.com/caronc/apprise/wiki for "
+            "all supported services."
         ),
     )
     events: EventsConfig = Field(
         default_factory=EventsConfig,
-        description="Per-event notification settings (enable/disable, custom messages).",
+        description=(
+            "Per-event notification settings (enable/disable, custom messages)."
+        ),
     )
 
     def is_configured(self) -> bool:
@@ -212,9 +209,7 @@ class Settings(BaseModel):
     vehicle: VehicleConfig = Field(default_factory=VehicleConfig)
     agenda: AgendaConfig
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
-    notifications: NotificationsConfig = Field(
-        default_factory=NotificationsConfig
-    )
+    notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
 
     def is_configured(self) -> bool:
         return bool(self.evcc.url and self.agenda.feeds)

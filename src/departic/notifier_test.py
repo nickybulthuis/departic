@@ -51,7 +51,7 @@ def test_format_plan_activated():
 
 
 def test_format_plan_activated_no_route():
-    title, body = _format_message(
+    _title, body = _format_message(
         NotifyEvent.PLAN_ACTIVATED,
         summary="Trip to Berlin",
         soc_pct=100,
@@ -275,5 +275,3 @@ def test_notify_uses_custom_template(mock_get):
     call_kwargs = mock_ap.notify.call_args.kwargs
     assert call_kwargs["title"] == "EV Plan"
     assert call_kwargs["body"] == "Charge 72% for Berlin"
-
-

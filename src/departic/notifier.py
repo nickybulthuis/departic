@@ -100,8 +100,12 @@ def _format_message(
     """
     ctx = _enrich_kwargs(event, kwargs)
 
-    title_tpl = (event_cfg.title if event_cfg and event_cfg.title else None) or _DEFAULT_TITLES[event]
-    body_tpl = (event_cfg.body if event_cfg and event_cfg.body else None) or _DEFAULT_BODIES[event]
+    title_tpl = (
+        event_cfg.title if event_cfg and event_cfg.title else None
+    ) or _DEFAULT_TITLES[event]
+    body_tpl = (
+        event_cfg.body if event_cfg and event_cfg.body else None
+    ) or _DEFAULT_BODIES[event]
 
     title = title_tpl.format_map(_SafeFormatDict(ctx))
     body = body_tpl.format_map(_SafeFormatDict(ctx))
@@ -116,7 +120,10 @@ class _SafeFormatDict(dict):
 
 
 def notify(cfg: NotificationsConfig, event: NotifyEvent, **kwargs: object) -> None:
-    """Send a notification. No-op if notifications are not configured or event is disabled."""
+    """Send a notification.
+
+    No-op if notifications are not configured or event is disabled.
+    """
     ap = _get_apprise(cfg)
     if ap is None:
         return
@@ -140,5 +147,3 @@ def reset() -> None:
     global _apprise, _configured_urls  # noqa: PLW0603
     _apprise = None
     _configured_urls = []
-
-
