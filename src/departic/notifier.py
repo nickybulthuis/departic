@@ -42,17 +42,12 @@ _DEFAULT_TITLES: dict[NotifyEvent, str] = {
 
 _DEFAULT_BODIES: dict[NotifyEvent, str] = {
     NotifyEvent.PLAN_ACTIVATED: (
-        "Trip: {summary}\n"
-        "Target: {soc_pct}% SoC by {deadline}\n"
-        "{route_info}"
+        "Trip: {summary}\nTarget: {soc_pct}% SoC by {deadline}\n{route_info}"
     ),
     NotifyEvent.PLAN_UPDATED: (
-        "Trip: {summary}\n"
-        "Target SoC changed: {old_soc_pct}% → {new_soc_pct}%"
+        "Trip: {summary}\nTarget SoC changed: {old_soc_pct}% → {new_soc_pct}%"
     ),
-    NotifyEvent.PLAN_CLEARED: (
-        "The charging plan for '{summary}' has been removed."
-    ),
+    NotifyEvent.PLAN_CLEARED: ("The charging plan for '{summary}' has been removed."),
     NotifyEvent.ROUTING_FAILED: (
         "Trip: {summary}\n"
         "Destination: {location}\n"
