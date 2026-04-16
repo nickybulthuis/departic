@@ -33,18 +33,31 @@ class NotifyEvent(StrEnum):
 # ── Built-in defaults ─────────────────────────────────────────────────────
 
 _DEFAULT_TITLES: dict[NotifyEvent, str] = {
-    NotifyEvent.PLAN_ACTIVATED: "🔋 Plan activated",
-    NotifyEvent.PLAN_UPDATED: "🔄 Plan updated",
-    NotifyEvent.PLAN_CLEARED: "✅ Plan cleared",
-    NotifyEvent.ROUTING_FAILED: "⚠️ Routing failed",
+    NotifyEvent.PLAN_ACTIVATED: "🔋 Charging plan activated",
+    NotifyEvent.PLAN_UPDATED: "🔄 Charging plan updated",
+    NotifyEvent.PLAN_CLEARED: "✅ Charging plan cleared",
+    NotifyEvent.ROUTING_FAILED: "⚠️ Route calculation failed",
     NotifyEvent.TOGGLED: "{emoji} Departic {label}",
 }
 
 _DEFAULT_BODIES: dict[NotifyEvent, str] = {
-    NotifyEvent.PLAN_ACTIVATED: "{summary} — {soc_pct}% SoC by {deadline}{route_info}",
-    NotifyEvent.PLAN_UPDATED: "{summary} — {old_soc_pct}% → {new_soc_pct}% SoC",
-    NotifyEvent.PLAN_CLEARED: "Charging plan removed (was: {summary}).",
-    NotifyEvent.ROUTING_FAILED: "{summary} → {location} — using default 100% SoC.",
+    NotifyEvent.PLAN_ACTIVATED: (
+        "Trip: {summary}\n"
+        "Target: {soc_pct}% SoC by {deadline}\n"
+        "{route_info}"
+    ),
+    NotifyEvent.PLAN_UPDATED: (
+        "Trip: {summary}\n"
+        "Target SoC changed: {old_soc_pct}% → {new_soc_pct}%"
+    ),
+    NotifyEvent.PLAN_CLEARED: (
+        "The charging plan for '{summary}' has been removed."
+    ),
+    NotifyEvent.ROUTING_FAILED: (
+        "Trip: {summary}\n"
+        "Destination: {location}\n"
+        "Could not calculate route — falling back to 100% SoC."
+    ),
     NotifyEvent.TOGGLED: "Departic has been {label}.",
 }
 
@@ -80,7 +93,7 @@ def _enrich_kwargs(event: NotifyEvent, kwargs: dict[str, object]) -> dict[str, o
     enriched = dict(kwargs)
     if event == NotifyEvent.PLAN_ACTIVATED:
         route_km = enriched.get("route_km")
-        enriched["route_info"] = f" ({route_km:.0f} km)" if route_km else ""
+        enriched["route_info"] = f"Distance: {route_km:.0f} km" if route_km else ""
     elif event == NotifyEvent.TOGGLED:
         enabled = enriched.get("enabled", False)
         enriched["label"] = "enabled" if enabled else "disabled"

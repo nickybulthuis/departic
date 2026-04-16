@@ -44,7 +44,7 @@ def test_format_plan_activated():
         deadline="Fri 18-04 08:00",
         route_km=245.0,
     )
-    assert "Plan activated" in title
+    assert "plan activated" in title.lower()
     assert "Trip to Berlin" in body
     assert "72%" in body
     assert "245 km" in body
@@ -88,7 +88,7 @@ def test_format_routing_failed():
         summary="Trip to Berlin",
         location="Berlin, Germany",
     )
-    assert "Routing failed" in title
+    assert "failed" in title.lower()
     assert "Trip to Berlin" in body
     assert "Berlin, Germany" in body
     assert "100%" in body
@@ -208,7 +208,7 @@ def test_notify_calls_apprise(mock_get):
 
     mock_ap.notify.assert_called_once()
     call_kwargs = mock_ap.notify.call_args
-    assert "Plan activated" in call_kwargs.kwargs["title"]
+    assert "plan activated" in call_kwargs.kwargs["title"].lower()
 
 
 @patch("departic.notifier._get_apprise")
