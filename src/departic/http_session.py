@@ -28,4 +28,3 @@ def build_session(
     session.mount("http://", adapter)
     session.mount("https://", adapter)
     return session
-
