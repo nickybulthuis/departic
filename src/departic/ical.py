@@ -15,6 +15,7 @@ import requests
 from dateutil import tz
 from icalendar import Calendar
 
+from departic.http_session import build_session
 from departic.models import TripEvent
 
 if TYPE_CHECKING:
@@ -23,8 +24,10 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-def fetch_ical(url: str) -> Calendar:
-    response = requests.get(url, timeout=10)
+def fetch_ical(url: str, *, session: requests.Session | None = None) -> Calendar:
+    """Fetch and parse an iCal feed (retries are handled by the session)."""
+    s = session or build_session()
+    response = s.get(url, timeout=10)
     response.raise_for_status()
     return Calendar.from_ical(response.content)
 
