@@ -17,6 +17,7 @@ from urllib.parse import quote
 import requests
 import urllib3
 
+from departic.http_session import build_session
 from departic.models import EvccLiveStatus, VehicleInfo
 
 if TYPE_CHECKING:
@@ -34,7 +35,7 @@ class EvccError(Exception):
 class EvccAPI:
     def __init__(self, url: str) -> None:
         self.base = url.rstrip("/") + "/api"
-        self._session = requests.Session()
+        self._session = build_session(allowed_methods=["GET", "POST", "DELETE"])
         self._session.verify = False  # allow self-signed certificates
 
     def _get(self, path: str) -> dict:

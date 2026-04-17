@@ -16,6 +16,7 @@ from departic.config import (
     Settings,
     VehicleConfig,
 )
+from departic.http_session import build_session
 from departic.ical import (
     _in_window,
     _is_trip_event,
@@ -124,16 +125,39 @@ def test_in_window(delta, expected):
 def test_fetch_ical_success():
     cal = _make_cal({"summary": "Test", "dtstart": datetime.now(tz.tzlocal())})
     rsps_lib.add(rsps_lib.GET, "http://cal.test/feed.ics", body=cal.to_ical())
-    result = fetch_ical("http://cal.test/feed.ics")
+    session = build_session(max_retries=0)
+    result = fetch_ical("http://cal.test/feed.ics", session=session)
     assert isinstance(result, Calendar)
 
 
 @rsps_lib.activate
 def test_fetch_ical_http_error():
-
-    rsps_lib.add(rsps_lib.GET, "http://cal.test/feed.ics", status=500)
+    rsps_lib.add(rsps_lib.GET, "http://cal.test/feed.ics", status=400)
+    session = build_session(max_retries=0)
     with pytest.raises(requests.HTTPError):
-        fetch_ical("http://cal.test/feed.ics")
+        fetch_ical("http://cal.test/feed.ics", session=session)
+
+
+@rsps_lib.activate
+def test_fetch_ical_retries_on_failure():
+    """Succeed on the second attempt after the first one fails."""
+    cal = _make_cal({"summary": "Test", "dtstart": datetime.now(tz.tzlocal())})
+    rsps_lib.add(rsps_lib.GET, "http://cal.test/feed.ics", status=503)
+    rsps_lib.add(rsps_lib.GET, "http://cal.test/feed.ics", body=cal.to_ical())
+
+    session = build_session(max_retries=1, backoff_factor=0)
+    result = fetch_ical("http://cal.test/feed.ics", session=session)
+    assert isinstance(result, Calendar)
+
+
+@rsps_lib.activate
+def test_fetch_ical_retries_exhausted():
+    """All retries fail — exception is raised."""
+    rsps_lib.add(rsps_lib.GET, "http://cal.test/feed.ics", status=503)
+    rsps_lib.add(rsps_lib.GET, "http://cal.test/feed.ics", status=503)
+    session = build_session(max_retries=1, backoff_factor=0)
+    with pytest.raises(requests.HTTPError):
+        fetch_ical("http://cal.test/feed.ics", session=session)
 
 
 # ── parse_feed ────────────────────────────────────────────────────────────
@@ -200,7 +224,11 @@ def test_parse_events_success():
 
 
 @rsps_lib.activate
-def test_parse_events_feed_http_error():
+def test_parse_events_feed_http_error(monkeypatch):
+    monkeypatch.setattr(
+        "departic.ical.build_session",
+        lambda **_kw: build_session(max_retries=0, backoff_factor=0),
+    )
     cfg = Settings(
         evcc=EvccConfig(url="http://evcc.test"),
         vehicle=VehicleConfig(),
@@ -209,7 +237,7 @@ def test_parse_events_feed_http_error():
             trip_mapping=[EventMappingEntry(tag="#trip", match="contains")],
         ),
     )
-    rsps_lib.add(rsps_lib.GET, "http://cal.test/bad.ics", status=500)
+    rsps_lib.add(rsps_lib.GET, "http://cal.test/bad.ics", status=400)
 
     events, errors = parse_events(cfg)
     assert len(events) == 0
@@ -218,7 +246,11 @@ def test_parse_events_feed_http_error():
 
 
 @rsps_lib.activate
-def test_parse_events_feed_value_error():
+def test_parse_events_feed_value_error(monkeypatch):
+    monkeypatch.setattr(
+        "departic.ical.build_session",
+        lambda **_kw: build_session(max_retries=0, backoff_factor=0),
+    )
     cfg = Settings(
         evcc=EvccConfig(url="http://evcc.test"),
         vehicle=VehicleConfig(),
