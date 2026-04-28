@@ -92,15 +92,14 @@ def test_set_plan_soc_vehicle_name_with_colon(evcc_url):
 
 @rsps_lib.activate
 def test_has_plan_soc_vehicle_name_with_colon(evcc_url):
-    """has_plan_soc must keep the colon unencoded in the vehicle name path segment."""
-    rsps_lib.add(
-        rsps_lib.GET,
-        f"{evcc_url}/api/vehicles/db:6/plan/soc",
-        json={"result": {"soc": 80, "time": "2026-04-06T08:00:00Z"}},
-    )
+    """has_plan_soc reads from /api/state for vehicles with colons in name."""
+    state = {
+        "vehicles": {
+            "db:6": {"plan": {"soc": 80, "time": "2026-04-06T08:00:00Z"}},
+        }
+    }
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=state)
     assert make_evcc(evcc_url).has_plan_soc("db:6") is True
-    assert "/vehicles/db:6/plan/soc" in rsps_lib.calls[0].request.url
-    assert "%3A" not in rsps_lib.calls[0].request.url
 
 
 @rsps_lib.activate
@@ -119,28 +118,40 @@ def test_delete_plan_soc_vehicle_name_with_colon(evcc_url):
 
 @rsps_lib.activate
 def test_has_plan_soc_true(evcc_url):
-    rsps_lib.add(
-        rsps_lib.GET,
-        f"{evcc_url}/api/vehicles/mycar/plan/soc",
-        json={"result": {"soc": 80, "time": "2026-04-05T08:00:00Z"}},
-    )
+    state = {
+        "vehicles": {
+            "mycar": {"plan": {"soc": 80, "time": "2026-04-05T08:00:00Z"}},
+        }
+    }
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=state)
     assert make_evcc(evcc_url).has_plan_soc("mycar") is True
 
 
 @rsps_lib.activate
 def test_has_plan_soc_false(evcc_url):
-    rsps_lib.add(
-        rsps_lib.GET,
-        f"{evcc_url}/api/vehicles/mycar/plan/soc",
-        json={"result": {"soc": 0, "time": "0001-01-01T00:00:00Z"}},
-    )
+    """EVCC zero-value plan (soc=0, Go zero time) is treated as no plan."""
+    state = {
+        "vehicles": {
+            "mycar": {"plan": {"soc": 0, "time": "0001-01-01T00:00:00Z"}},
+        }
+    }
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=state)
     assert make_evcc(evcc_url).has_plan_soc("mycar") is False
 
 
 @rsps_lib.activate
-def test_has_plan_soc_404(evcc_url):
-    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/vehicles/mycar/plan/soc", status=404)
+def test_has_plan_soc_no_plan_key(evcc_url):
+    """Vehicle with no plan key at all is treated as no plan."""
+    state = {"vehicles": {"mycar": {}}}
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=state)
     assert make_evcc(evcc_url).has_plan_soc("mycar") is False
+
+
+@rsps_lib.activate
+def test_has_plan_soc_request_error(evcc_url):
+    """Network error falls back to True to avoid hammering EVCC."""
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", body=rsps_lib.ConnectionError())
+    assert make_evcc(evcc_url).has_plan_soc("mycar") is True
 
 
 @rsps_lib.activate
