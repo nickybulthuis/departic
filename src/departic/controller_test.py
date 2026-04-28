@@ -7,6 +7,7 @@ from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
+import requests
 import responses as rsps_lib
 from dateutil import tz
 
@@ -436,13 +437,13 @@ def test_run_cycle_set_plan_fails(evcc_url, evcc_state, cfg):
 @rsps_lib.activate
 def test_run_cycle_has_plan_check_fails(evcc_url, evcc_state, cfg):
     """When has_plan_soc fails, assume plan exists and skip reapply."""
-    import requests
-
     event = make_event(hours_from_now=24)
     state = AppState(active_trip=ActiveTripState(trip_id=event.trip_id, target_soc=100))
     rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state)
     evcc = make_evcc(evcc_url)
-    with patch.object(evcc, "has_plan_soc", side_effect=requests.RequestException("timeout")):
+    with patch.object(
+        evcc, "has_plan_soc", side_effect=requests.RequestException("timeout")
+    ):
         result = run_cycle(evcc, [event], state, cfg)
     # Should not crash; assumes plan exists and skips reapply
     assert result.active_trip_id == event.trip_id
