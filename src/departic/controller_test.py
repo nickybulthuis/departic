@@ -7,6 +7,7 @@ from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
+import requests
 import responses as rsps_lib
 from dateutil import tz
 
@@ -310,12 +311,17 @@ def test_plan_uses_event_time_as_deadline_when_routed(evcc_url, evcc_state, cfg)
 def test_plan_skipped_if_unchanged(evcc_url, evcc_state, cfg):
     event = make_event(hours_from_now=24)
     state = AppState(active_trip=ActiveTripState(trip_id=event.trip_id, target_soc=100))
-    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state)
-    rsps_lib.add(
-        rsps_lib.GET,
-        f"{evcc_url}/api/vehicles/mycar/plan/soc",
-        json={"result": {"soc": 100, "time": "2026-04-05T08:00:00Z"}},
-    )
+    # Add plan data so has_plan_soc (which reads /api/state) returns True
+    evcc_state_with_plan = {
+        **evcc_state,
+        "vehicles": {
+            "mycar": {
+                **evcc_state["vehicles"]["mycar"],
+                "plan": {"soc": 100, "time": "2026-04-05T08:00:00Z"},
+            }
+        },
+    }
+    rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state_with_plan)
     run_cycle(make_evcc(evcc_url), [event], state, cfg)
     post_calls = [c for c in rsps_lib.calls if c.request.method == "POST"]
     assert len(post_calls) == 0
@@ -325,12 +331,8 @@ def test_plan_skipped_if_unchanged(evcc_url, evcc_state, cfg):
 def test_plan_reapplied_if_removed_in_evcc(evcc_url, evcc_state, cfg):
     event = make_event(hours_from_now=24)
     state = AppState(active_trip=ActiveTripState(trip_id=event.trip_id, target_soc=100))
+    # evcc_state has no plan key → has_plan_soc returns False → plan reapplied
     rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state)
-    rsps_lib.add(
-        rsps_lib.GET,
-        f"{evcc_url}/api/vehicles/mycar/plan/soc",
-        json={"result": {"soc": 0, "time": "0001-01-01T00:00:00Z"}},
-    )
     rsps_lib.add(
         rsps_lib.POST,
         plan_post_url(evcc_url, "mycar", 100, event.event_time),
@@ -347,12 +349,8 @@ def test_reapply_does_not_notify(evcc_url, evcc_state, cfg):
     no notification should be sent — this is a silent re-apply."""
     event = make_event(hours_from_now=24)
     state = AppState(active_trip=ActiveTripState(trip_id=event.trip_id, target_soc=100))
+    # evcc_state has no plan key → has_plan_soc returns False → plan reapplied silently
     rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state)
-    rsps_lib.add(
-        rsps_lib.GET,
-        f"{evcc_url}/api/vehicles/mycar/plan/soc",
-        json={"result": {"soc": 0, "time": "0001-01-01T00:00:00Z"}},
-    )
     rsps_lib.add(
         rsps_lib.POST,
         plan_post_url(evcc_url, "mycar", 100, event.event_time),
@@ -442,13 +440,12 @@ def test_run_cycle_has_plan_check_fails(evcc_url, evcc_state, cfg):
     event = make_event(hours_from_now=24)
     state = AppState(active_trip=ActiveTripState(trip_id=event.trip_id, target_soc=100))
     rsps_lib.add(rsps_lib.GET, f"{evcc_url}/api/state", json=evcc_state)
-    rsps_lib.add(
-        rsps_lib.GET,
-        f"{evcc_url}/api/vehicles/mycar/plan/soc",
-        body=rsps_lib.ConnectionError(),
-    )
-    result = run_cycle(make_evcc(evcc_url), [event], state, cfg)
-    # Should not crash; assumes plan exists and skips
+    evcc = make_evcc(evcc_url)
+    with patch.object(
+        evcc, "has_plan_soc", side_effect=requests.RequestException("timeout")
+    ):
+        result = run_cycle(evcc, [event], state, cfg)
+    # Should not crash; assumes plan exists and skips reapply
     assert result.active_trip_id == event.trip_id
     post_calls = [c for c in rsps_lib.calls if c.request.method == "POST"]
     assert len(post_calls) == 0

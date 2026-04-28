@@ -210,16 +210,14 @@ class EvccAPI:
         Returns True (safe default) if the check fails.
         """
         try:
-            r = self._session.get(
-                f"{self.base}/vehicles/{quote(vehicle_name, safe=':')}/plan/soc",
-                timeout=5,
-            )
-            if r.status_code == 404:
-                return False
-            r.raise_for_status()
-            result = r.json().get("result", {})
-            return bool(result.get("soc") and result.get("time"))
-        except (requests.RequestException, KeyError):
+            state = self.get_state()
+            v_plan = state.get("vehicles", {}).get(vehicle_name, {}).get("plan") or {}
+            plan_soc = v_plan.get("soc")
+            plan_time = v_plan.get("time", "")
+            if plan_time in ("0001-01-01T00:00:00Z", ""):
+                plan_time = None
+            return bool(plan_soc and plan_time)
+        except requests.RequestException:
             log.warning("Could not check plan status for %r", vehicle_name)
             return True  # assume plan exists to avoid hammering EVCC
 
